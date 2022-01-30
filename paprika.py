@@ -1,17 +1,39 @@
+from typing import List, Optional
 import aiohttp
 import gzip
 import json
+from pydantic import parse, parse_obj_as
+
 from mycroft.util.log import LOG
 
-logger = LOG.create_logger(__name__)
+from .models import Endpoints, GroceryList, GroceryListResp
+
 
 class PaprikaClient():
     def __init__(self, username: str, pwd: str) -> None:
         self.username = username
         self.pwd = pwd
         self.auth = aiohttp.BasicAuth(username, pwd)
+        self.session = aiohttp.ClientSession(auth=self.auth)
+        self.grocery_lists: List[GroceryList] = []
+        self.default_grocery_list: Optional[GroceryList] = None
 
-    async def add_item_to_list(self, item: str):
+    async def initialize(self) -> None:
+        await self.load_grocery_lists()
+
+    async def load_grocery_lists(self) -> None:
+        async with self.session.get(Endpoints.GROCERY_LISTS) as resp:
+            self.grocery_lists = GroceryListResp.parse_raw(await resp.text()).result
+        self.default_grocery_list = next((x for x in self.grocery_lists if x.is_default), None)
+        LOG.info(f"Setting default grocery list: {self.default_grocery_list}")
+
+    async def add_item_to_list(self, item: str, list_id: Optional[str]=None) -> None:
+        if list_id is None:
+            if self.default_grocery_list is None:
+                LOG.error("No default grocery list. Unable to add item.")
+                return
+            list_id = self.default_grocery_list.uid
+
         grocery_items = [{
           "uid": "randomnumber",
           "order_flag": 428,
@@ -20,20 +42,20 @@ class PaprikaClient():
           "recipe": None,
           "recipe_uid": None,
           "purchased": False,
-          "list_uid": "9E12FCF54A89FC52EA8E1C5DA1BDA62A6617ED8BDC2AEB6F291B93C7A399F6F6",
+          # Eventually, it would be cool to enable adding items to different lists
+          "list_uid": list_id,
           "quantity": "",
           "name": item
         }]
-        logger.info(json.dumps(grocery_items).encode('utf_8'))
         data = gzip.compress(json.dumps(grocery_items).encode('utf_8'))
         formdata = aiohttp.FormData()
         formdata.add_field("data", data)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post("https://www.paprikaapp.com/api/v1/sync/groceries/", data=formdata, auth=self.auth) as resp:
-                resp_text = await resp.text()
-                logger.info(f"Paprika response: {resp.status} {resp_text}") 
+        # NOTE: the trailing slash is required otherwise the request is routed incorrectly :)
+        async with self.session.post(Endpoints.GROCERIES, data=formdata) as resp:
+            resp_text = await resp.text()
+            LOG.info(f"Paprika response: {resp.status} {resp_text}")
 
-
-
+    async def close(self) -> None:
+        await self.session.close()
 
