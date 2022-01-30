@@ -27,11 +27,15 @@ class PaprikaClient():
         self.default_grocery_list = next((x for x in self.grocery_lists if x.is_default), None)
         LOG.info(f"Setting default grocery list: {self.default_grocery_list}")
 
-    async def add_item_to_list(self, item: str, list_id: Optional[str]=None) -> None:
+    async def add_item_to_list(self, item: str, list_id: Optional[str]=None) -> bool:
+        """
+        Returns true if the item is successfully added, false otherwise
+        """
+
         if list_id is None:
             if self.default_grocery_list is None:
                 LOG.error("No default grocery list. Unable to add item.")
-                return
+                return False
             list_id = self.default_grocery_list.uid
 
         grocery_items = [{
@@ -55,6 +59,8 @@ class PaprikaClient():
         async with self.session.post(Endpoints.GROCERIES, data=formdata) as resp:
             resp_text = await resp.text()
             LOG.info(f"Paprika response: {resp.status} {resp_text}")
+
+        return True
 
     async def close(self) -> None:
         await self.session.close()

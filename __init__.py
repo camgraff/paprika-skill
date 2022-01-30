@@ -25,8 +25,10 @@ class Paprika(MycroftSkill):
 
     async def _handle_add_item(self, item: str):
         self.log.info(f"Adding item to list: {item}")
-        await self.paprika.add_item_to_list(item)
-        self.speak_dialog('paprika')
+        if await self.paprika.add_item_to_list(item):
+            self.speak_dialog('add.item.success', {'item': item})
+        else:
+            self.speak_dialog('add.item.failure', {'item': item})
 
     def shutdown(self):
         self.loop.run_until_complete(self.paprika.close())
