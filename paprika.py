@@ -55,7 +55,6 @@ class PaprikaClient():
         formdata = aiohttp.FormData()
         formdata.add_field("data", data)
 
-        # NOTE: the trailing slash is required otherwise the request is routed incorrectly :)
         async with self.session.post(Endpoints.GROCERIES, data=formdata) as resp:
             resp_text = await resp.text()
             LOG.info(f"Paprika response: {resp.status} {resp_text}")

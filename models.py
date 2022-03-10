@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class Endpoints:
     BASE = "https://www.paprikaapp.com"
     _BASE_API = BASE + "/api/v1/sync"
+    # NOTE: the trailing slash is required otherwise the request is routed incorrectly :)
     GROCERIES = _BASE_API + "/groceries/"
     GROCERY_LISTS = _BASE_API + "/grocerylists/"
 
