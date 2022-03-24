@@ -24,7 +24,7 @@ class PaprikaClient():
 
     async def load_grocery_lists(self) -> None:
         async with self.session.get(Endpoints.GROCERY_LISTS) as resp:
-            LOG.info(f"Got grocery_list response: {resp=}")
+            LOG.info(f"Got grocery_list response: {resp}")
             self.grocery_lists = GroceryListResp.parse_raw(await resp.text()).result
         self.default_grocery_list = next((x for x in self.grocery_lists if x.is_default), None)
         LOG.info(f"Setting default grocery list: {self.default_grocery_list}")
